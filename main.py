@@ -50,6 +50,8 @@ green_alphabet = [font.render(char, True, (0, randrange(160, 256), 0)) for char 
 light_green_alphabet = [font.render(char, True, pygame.Color('#e3ffe4')) for char in matrix_alphabet]
 symbol_columns = [SymbolColumn(x, randrange(-HEIGHT, 0)) for x in range(0, WIDTH, FONT_SIZE)]
 
+sound = pygame.mixer.Sound('matrix.mp3')
+
 
 def hello_neo(alpha: int = alpha_value) -> None:
     """ Start matrix
@@ -59,6 +61,7 @@ def hello_neo(alpha: int = alpha_value) -> None:
     if alpha_value != alpha:
         alpha_value = alpha
 
+    sound.play()
     while True:
         screen.blit(surface, (0, 0))
         surface.fill(pygame.Color('black'))
