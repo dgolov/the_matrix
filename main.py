@@ -4,34 +4,32 @@ import pygame.camera
 import time
 
 from random import choice, randrange
-from screeninfo import get_monitors
+from settings import ALPHABET, FONT_SIZE, RES, WIDTH, HEIGHT
 
 
 class MatrixVision:
-    """ Matrix camera image
-    """
+    """ Matrix camera image """
     def __init__(self, app) -> None:
         self.app = app
-        self.SIZE = self.ROWS, self.COLS = app.HEIGHT // app.FONT_SIZE, app.WIDTH // app.FONT_SIZE
-        self.matrix = np.random.choice(self.app.matrix_alphabet, self.SIZE)
+        self.SIZE = self.ROWS, self.COLS = HEIGHT // FONT_SIZE, WIDTH // FONT_SIZE
+        self.matrix = np.random.choice(ALPHABET, self.SIZE)
         self.char_intervals = np.random.randint(25, 50, size=self.SIZE)
         self.cols_speed = np.random.randint(1, 500, size=self.SIZE)
         self.rendered_chars = self.get_rendered_chars()
         self.image = None
 
-    def get_frame(self):
-        """ Get pixels from camera image
-        :return: None
-        """
+    @staticmethod
+    def get_frame():
+        """ Get pixels from camera image """
         image = matrix.camera.get_image()
-        image = pygame.transform.scale(image, self.app.RES)
+        image = pygame.transform.scale(image, RES)
         pixel_array = pygame.pixelarray.PixelArray(image)
         return pixel_array
 
     def get_rendered_chars(self) -> dict:
         char_colors = [(0, green, 0) for green in range(256)]
         rendered_chars = {}
-        for char in self.app.matrix_alphabet:
+        for char in ALPHABET:
             rendered_char = {(char, color): self.app.font.render(char, True, color) for color in char_colors}
             rendered_chars.update(rendered_char)
         return rendered_chars
@@ -50,7 +48,7 @@ class MatrixVision:
 
     def change_chars(self, frames) -> None:
         mask = np.argwhere(frames % self.char_intervals == 0)
-        new_chars = np.random.choice(self.app.matrix_alphabet, mask.shape[0])
+        new_chars = np.random.choice(ALPHABET, mask.shape[0])
         self.matrix[mask[:, 0], mask[:, 1]] = new_chars
 
     def draw(self) -> None:
@@ -58,7 +56,7 @@ class MatrixVision:
         for y, row in enumerate(self.matrix):
             for x, char in enumerate(row):
                 if char:
-                    pos = x * self.app.FONT_SIZE, y * self.app.FONT_SIZE
+                    pos = x * FONT_SIZE, y * FONT_SIZE
                     _, red, green, blue = pygame.Color(self.image[pos])
                     if red and green and blue:
                         color = (red + green + blue) // 3
@@ -71,22 +69,15 @@ class MatrixVision:
 class Matrix:
     """ Matrix """
     def __init__(self, alpha=None) -> None:
-        monitor = get_monitors()[0]
         pygame.init()
 
-        self.RES = self.WIDTH, self.HEIGHT = monitor.width, monitor.height
-        self.FONT_SIZE = 23
-        self.screen = pygame.display.set_mode(self.RES)
-        self.surface = pygame.Surface(self.RES)
+        self.screen = pygame.display.set_mode(RES)
+        self.surface = pygame.Surface(RES)
         self.clock = pygame.time.Clock()
-        self.matrix_alphabet = np.array([chr(int('0x30a0', 16) + i) for i in range(96)] + ['' for _ in range(10)])
-        self.font = pygame.font.Font('MS_Mincho.ttf', self.FONT_SIZE)
-        self.green_alphabet = [self.font.render(char, True, (0, randrange(160, 256), 0))
-                               for char in self.matrix_alphabet]
-        self.light_green_alphabet = [self.font.render(char, True, pygame.Color('#e3ffe4'))
-                                     for char in self.matrix_alphabet]
-        self.symbol_columns = [SymbolColumn(x, randrange(-self.HEIGHT, 0), self)
-                               for x in range(0, self.WIDTH, self.FONT_SIZE)]
+        self.font = pygame.font.Font('MS_Mincho.ttf', FONT_SIZE)
+        self.green_alphabet = [self.font.render(char, True, (0, randrange(160, 256), 0)) for char in ALPHABET]
+        self.light_green_alphabet = [self.font.render(char, True, pygame.Color('#e3ffe4')) for char in ALPHABET]
+        self.symbol_columns = [SymbolColumn(x, randrange(-HEIGHT, 0), self) for x in range(0, WIDTH, FONT_SIZE)]
         self.alpha_value = alpha if alpha else 50
         self.sound = pygame.mixer.Sound('matrix.mp3')
         self.camera = None
@@ -132,28 +123,27 @@ class Matrix:
 
 class Symbol:
     """ Single matrix symbol """
-    def __init__(self, x: int, y: int, speed: int, vision) -> None:
+    def __init__(self, x: int, y: int, speed: int, app) -> None:
         self.x, self.y = x, y
         self.speed = speed
-        self.value = choice(vision.green_alphabet)
+        self.value = choice(app.green_alphabet)
         self.interval = randrange(5, 30)
-        self.vision = vision
+        self.vision = app
 
     def draw(self, color: str) -> None:
         frames = pygame.time.get_ticks()
         if not frames % self.interval:
             self.value = choice(self.vision.green_alphabet if color == 'green' else self.vision.light_green_alphabet)
-        self.y = self.y + self.speed if self.y < self.vision.HEIGHT else - self.vision.FONT_SIZE
+        self.y = self.y + self.speed if self.y < HEIGHT else -FONT_SIZE
         self.vision.surface.blit(self.value, (self.x, self.y))
 
 
 class SymbolColumn:
     """ Vertical column of matrix symbols """
-    def __init__(self, x: int, y: int, vision) -> None:
+    def __init__(self, x: int, y: int, app) -> None:
         self.column_height = randrange(14, 24)
         self.speed = randrange(2, 6)
-        self.symbols = [Symbol(x, i, self.speed, vision)
-                        for i in range(y, y - vision.FONT_SIZE * self.column_height, -vision.FONT_SIZE)]
+        self.symbols = [Symbol(x, i, self.speed, app) for i in range(y, y - FONT_SIZE * self.column_height, -FONT_SIZE)]
 
     def draw(self) -> None:
         [symbol.draw('green') if i else symbol.draw('lightgreen') for i, symbol in enumerate(self.symbols)]
